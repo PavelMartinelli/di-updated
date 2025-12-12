@@ -1,0 +1,50 @@
+﻿using FluentAssertions;
+using TagCloudGenerator;
+
+namespace TagCloudGeneratorTests;
+
+[TestFixture]
+public class FrequencyWordAnalyzerTests
+{
+    private FrequencyWordAnalyzer _analyzer;
+
+    [SetUp]
+    public void SetUp()
+    {
+        _analyzer = new FrequencyWordAnalyzer();
+    }
+
+    [Test]
+    public void Analyze_ShouldCountWordFrequencies_CaseInsensitive()
+    {
+        var words = new[] { "cat", "dog", "Cat", "DOG", "cat", "Dog" };
+        
+        var result = _analyzer.Analyze(words);
+        
+        result.Should().HaveCount(2);
+        result["cat"].Should().Be(3);
+        result["dog"].Should().Be(3);
+    }
+
+    [Test]
+    public void Analyze_ShouldReturnEmptyDictionary_ForEmptyInput()
+    {
+        var words = Enumerable.Empty<string>();
+        
+        var result = _analyzer.Analyze(words);
+        
+        result.Should().BeEmpty();
+        result.Should().NotBeNull();
+    }
+
+    [Test]
+    public void Analyze_ShouldHandleDuplicateWords()
+    {
+        var words = new[] { "test", "test", "test", "test" };
+        
+        var result = _analyzer.Analyze(words);
+        
+        result.Should().HaveCount(1);
+        result["test"].Should().Be(4);
+    }
+}
