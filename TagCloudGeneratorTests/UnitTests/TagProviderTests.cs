@@ -32,9 +32,9 @@ public class TagProviderTests
     {
         var wordFrequencies = new Dictionary<string, int>
         {
-            ["apple"] = 5,
-            ["banana"] = 10,
-            ["orange"] = 3
+            ["яблоко"] = 5,
+            ["банан"] = 10,
+            ["апельсин"] = 3
         };
         
         var config = new TagCloudProviderConfig(
@@ -48,9 +48,9 @@ public class TagProviderTests
             .ToList();
 
         tags.Should().HaveCount(3);
-        tags[0].Text.Should().Be("banana");
-        tags[1].Text.Should().Be("apple");
-        tags[2].Text.Should().Be("orange");
+        tags[0].Text.Should().Be("банан");
+        tags[1].Text.Should().Be("яблоко");
+        tags[2].Text.Should().Be("апельсин");
     }
 
     [Test]
@@ -58,7 +58,7 @@ public class TagProviderTests
     {
         var wordFrequencies = new Dictionary<string, int>
         {
-            ["test"] = 5
+            ["тест"] = 5
         };
         
         var config = new TagCloudProviderConfig(

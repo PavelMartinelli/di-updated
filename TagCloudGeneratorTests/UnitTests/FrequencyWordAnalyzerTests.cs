@@ -17,13 +17,13 @@ public class FrequencyWordAnalyzerTests
     [Test]
     public void Analyze_ShouldCountWordFrequencies_CaseInsensitive()
     {
-        var words = new[] { "cat", "dog", "Cat", "DOG", "cat", "Dog" };
+        var words = new[] { "кот", "собака", "Кот", "СОБАКА", "кот", "Собака" };
         
         var result = _analyzer.Analyze(words);
         
         result.Should().HaveCount(2);
-        result["cat"].Should().Be(3);
-        result["dog"].Should().Be(3);
+        result["кот"].Should().Be(3);
+        result["собака"].Should().Be(3);
     }
 
     [Test]
@@ -40,11 +40,11 @@ public class FrequencyWordAnalyzerTests
     [Test]
     public void Analyze_ShouldHandleDuplicateWords()
     {
-        var words = new[] { "test", "test", "test", "test" };
+        var words = new[] { "тест", "тест", "тест", "тест" };
         
         var result = _analyzer.Analyze(words);
         
         result.Should().HaveCount(1);
-        result["test"].Should().Be(4);
+        result["тест"].Should().Be(4);
     }
 }

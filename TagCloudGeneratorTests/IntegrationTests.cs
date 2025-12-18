@@ -43,8 +43,8 @@ public class IntegrationTests
     {
         var words = new[]
         {
-            "apple", "banana", "apple", "orange", "banana", "banana",
-            "pear", "grape", "apple", "kiwi", "orange", "apple"
+            "яблоко", "банан", "яблоко", "апельсин", "банан", "банан",
+            "груша", "виноград", "яблоко", "киви", "апельсин", "яблоко"
         };
 
         File.WriteAllLines(_tempInputFile, words);
@@ -61,7 +61,7 @@ public class IntegrationTests
             BackgroundColor = Color.White,
             ColorScheme = "Random",
             Center = new Point(400, 300),
-            StopWords = new List<string> { "the", "and", "is" },
+            StopWords = new List<string> { "и", "в", "на" },
             ToLowerCase = true
         };
         
@@ -81,14 +81,14 @@ public class IntegrationTests
     [Test]
     public void GenerateFromFile_ShouldFilterStopWordsAndConvertToLowercase()
     {
-        var words = new[] { "THE", "Cat", "and", "the", "DOG", "is", "running" };
+        var words = new[] { "И", "Кот", "в", "доме", "НА", "полу", "бежит" };
         File.WriteAllLines(_tempInputFile, words);
 
         var settings = new AppSettings
         {
             InputFile = _tempInputFile,
             OutputFile = "test_filtered.png",
-            StopWords = new List<string> { "the", "and", "is" },
+            StopWords = new List<string> { "и", "в", "на" },
             ToLowerCase = true
         };
         

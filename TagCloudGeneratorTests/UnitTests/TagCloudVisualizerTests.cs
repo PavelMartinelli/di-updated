@@ -29,11 +29,11 @@ public class TagCloudVisualizerTests
     {
         var wordTags = new[]
         {
-            new WordTag("Hello", 5, new Font("Arial", 20), Color.Blue)
+            new WordTag("Привет", 5, new Font("Arial", 20), Color.Blue)
             {
                 Rectangle = new Rectangle(50, 50, 60, 30)
             },
-            new WordTag("World", 3, new Font("Arial", 16), Color.Red)
+            new WordTag("Мир", 3, new Font("Arial", 16), Color.Red)
             {
                 Rectangle = new Rectangle(100, 100, 70, 25)
             }
@@ -53,7 +53,7 @@ public class TagCloudVisualizerTests
     {
         var wordTags = new[]
         {
-            new WordTag("Test", 1, new Font("Arial", 12), Color.Black)
+            new WordTag("Тест", 1, new Font("Arial", 12), Color.Black)
             {
                 Rectangle = new Rectangle(50, 50, 40, 20)
             }
@@ -72,11 +72,11 @@ public class TagCloudVisualizerTests
     {
         var wordTags = new[]
         {
-            new WordTag("First", 2, new Font("Arial", 12), Color.Black)
+            new WordTag("Первый", 2, new Font("Arial", 12), Color.Black)
             {
                 Rectangle = new Rectangle(0, 0, 50, 50)
             },
-            new WordTag("Second", 1, new Font("Arial", 12), Color.Black)
+            new WordTag("Второй", 1, new Font("Arial", 12), Color.Black)
             {
                 Rectangle = new Rectangle(200, 200, 70, 30)
             }
@@ -95,7 +95,7 @@ public class TagCloudVisualizerTests
     {
         var wordTags = new[]
         {
-            new WordTag("Test", 1, new Font("Arial", 12), Color.Black)
+            new WordTag("Тест", 1, new Font("Arial", 12), Color.Black)
             {
                 Rectangle = new Rectangle(50, 50, 40, 20)
             }
@@ -118,7 +118,7 @@ public class TagCloudVisualizerTests
     {
         var wordTags = new[]
         {
-            new WordTag("Test", 1, new Font("Arial", 12), Color.Black)
+            new WordTag("Тест", 1, new Font("Arial", 12), Color.Black)
             {
                 Rectangle = new Rectangle(50, 50, 40, 20)
             }
@@ -141,7 +141,7 @@ public class TagCloudVisualizerTests
     {
         var wordTags = new[]
         {
-            new WordTag("Test", 1, new Font("Arial", 12), Color.Black)
+            new WordTag("Тест", 1, new Font("Arial", 12), Color.Black)
             {
                 Rectangle = new Rectangle(50, 50, 40, 20)
             }
