@@ -1,6 +1,6 @@
-﻿namespace TagCloudGenerator;
+﻿using System.Drawing;
 
-using System.Drawing;
+namespace TagCloudGenerator;
 
 public interface ITextMeasurer
 {

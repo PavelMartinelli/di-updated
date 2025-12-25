@@ -1,6 +1,6 @@
-﻿namespace TagCloudGenerator;
+﻿using CommandLine;
 
-using CommandLine;
+namespace TagCloudGenerator;
 
 
 [Verb("generate", HelpText = "Generate a tag cloud from a text file")]
