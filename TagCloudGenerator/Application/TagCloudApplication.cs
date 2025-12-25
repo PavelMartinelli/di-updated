@@ -2,7 +2,6 @@
 
 using System.Drawing;
 
-
 public class TagCloudApplication
 {
     private readonly ITextReader _textReader;
@@ -40,36 +39,78 @@ public class TagCloudApplication
         _visualizer = visualizer ?? throw new ArgumentNullException(nameof(visualizer));
     }
 
-    public string GenerateFromFile(AppSettings settings)
+    public Result<string> GenerateFromFile(AppSettings settings)
     {
-        if (!_textReader.CanRead(settings.InputFile))
-            throw new FileNotFoundException($"Input file not found: {settings.InputFile}");
-        
-        var lines = _textReader.ReadLines(settings.InputFile);
-    
-        var processedWords = _wordPreprocessor.Process(lines);
-    
-        var wordFrequencies = _wordAnalyzer.Analyze(processedWords);
-    
-        if (!wordFrequencies.Any())
-            throw new InvalidOperationException("No words found in the input file after preprocessing");
-        
-        var generationConfig = new TagCloudProviderConfig(
+        return settings.Validate()
+            .Then(_ => ValidateFont(settings.FontFamily))
+            .Then(_ => _textReader.ReadLines(settings.InputFile))
+            .Then(lines => _wordPreprocessor.Process(lines))
+            .Then(processedWords => _wordAnalyzer.Analyze(processedWords))
+            .Then(ValidateWordFrequencies)
+            .Then(wordFrequencies => CreateGenerationConfig(settings, wordFrequencies).AsResult())
+            .Then(config => _tagProvider.GetTags(config, _fontSizeCalculator, _colorScheme))
+            .Then(tags => tags.ToList().AsResult())
+            .Then(tags => ArrangeTags(settings.Center, tags))
+            .Then(arrangedTags => ValidateTagsFitImage(arrangedTags, settings.Width, settings.Height))
+            .Then(arrangedTags => SaveVisualization(settings, arrangedTags));
+    }
+
+    private Result<None> ValidateFont(string fontFamily)
+    {
+        return Result.OfAction(() =>
+            {
+                using var testFont = new Font(fontFamily, 12);
+                if (!testFont.Name.Equals(fontFamily, StringComparison.OrdinalIgnoreCase))
+                    throw new Exception($"Font '{fontFamily}' is not available in the system.");
+            }, $"Font '{fontFamily}' is not available in the system. Please check the font name and try again.");
+    }
+
+    private Result<Dictionary<string, int>> ValidateWordFrequencies(Dictionary<string, int> wordFrequencies)
+    {
+        return wordFrequencies.Any()
+            ? Result.Ok(wordFrequencies)
+            : Result.Fail<Dictionary<string, int>>("No words found in the input file after preprocessing");
+    }
+
+    private TagCloudProviderConfig CreateGenerationConfig(AppSettings settings, Dictionary<string, int> wordFrequencies)
+    {
+        return new TagCloudProviderConfig(
             settings.Center,
             wordFrequencies,
             settings.FontFamily,
             settings.MinFontSize,
             settings.MaxFontSize);
-    
-        var tags = _tagProvider.GetTags(
-            generationConfig,
-            _fontSizeCalculator,
-            _colorScheme).ToList();
-    
-        var layouter = _layouterFactory(settings.Center);
-    
-        var arrangedTags = _algorithm.ArrangeTags(tags, layouter, _textMeasurer);
-        
+    }
+
+    private Result<List<WordTag>> ArrangeTags(Point center, List<WordTag> tags)
+    {
+        var layouter = _layouterFactory(center);
+        return _algorithm.ArrangeTags(tags, layouter, _textMeasurer)
+            .Then(arrangedTags => arrangedTags.ToList().AsResult());
+    }
+
+    private Result<List<WordTag>> ValidateTagsFitImage(List<WordTag> tags, int width, int height)
+    {
+        if (!tags.Any())
+            return Result.Ok(tags);
+
+        var minX = tags.Min(t => t.Rectangle.Left);
+        var maxX = tags.Max(t => t.Rectangle.Right);
+        var minY = tags.Min(t => t.Rectangle.Top);
+        var maxY = tags.Max(t => t.Rectangle.Bottom);
+
+        var actualWidth = maxX - minX;
+        var actualHeight = maxY - minY;
+
+        return (actualWidth <= width && actualHeight <= height)
+            ? Result.Ok(tags)
+            : Result.Fail<List<WordTag>>(
+                $"Tag cloud ({actualWidth}x{actualHeight}) does not fit into specified image size ({width}x{height}). " +
+                "Try increasing image dimensions, decreasing font sizes, or reducing the number of words.");
+    }
+
+    private Result<string> SaveVisualization(AppSettings settings, List<WordTag> arrangedTags)
+    {
         var visualizationConfig = new TagCloudVisualizationConfig(
             settings.OutputFile,
             new Size(settings.Width, settings.Height),

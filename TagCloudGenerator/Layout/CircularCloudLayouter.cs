@@ -8,7 +8,6 @@ public class CircularCloudLayouter : ICloudLayouter
     private readonly ISpiralPointsProvider _pointsProvider;
     private int _minDimension;
     private IEnumerator<Point> _spiralEnumerator;
-
     private Point Center { get; }
 
     public CircularCloudLayouter(Point center, ISpiralPointsProvider pointsProvider)
@@ -20,39 +19,60 @@ public class CircularCloudLayouter : ICloudLayouter
         _spiralEnumerator = _pointsProvider.GetSpiralPoints(_minDimension).GetEnumerator();
     }
 
-    public Rectangle PutNextRectangle(Size rectangleSize)
+    public Result<Rectangle> PutNextRectangle(Size rectangleSize)
     {
-        if (rectangleSize.Width <= 0 || rectangleSize.Height <= 0)
-            throw new ArgumentException("Rectangle size must have positive dimensions");
+        return ValidateRectangleSize(rectangleSize)
+            .Then(_ => UpdateMinDimension(rectangleSize))
+            .Then(_ => FindPlaceForRectangle(rectangleSize))
+            .ReplaceError(err => $"Failed to place rectangle of size {rectangleSize}: {err}");
+    }
 
-        UpdateMinDimension(rectangleSize);
-        
-        _spiralEnumerator ??= _pointsProvider.GetSpiralPoints(_minDimension)
-            .GetEnumerator();
-        
-        while (true)
+    private Result<None> ValidateRectangleSize(Size rectangleSize)
+    {
+        return (rectangleSize.Width > 0 && rectangleSize.Height > 0)
+            ? Result.Ok()
+            : Result.Fail<None>("Rectangle size must have positive dimensions");
+    }
+
+    private Result<None> UpdateMinDimension(Size size)
+    {
+        var newMinDimension = Math.Min(size.Width, size.Height);
+        if (newMinDimension < _minDimension)
         {
-            _spiralEnumerator.MoveNext();
-            var point = _spiralEnumerator.Current;
+            _minDimension = newMinDimension;
+            _spiralEnumerator = _pointsProvider.GetSpiralPoints(_minDimension).GetEnumerator();
+        }
+        return Result.Ok();
+    }
+
+    private Result<Rectangle> FindPlaceForRectangle(Size rectangleSize)
+    {
+        for (int attempts = 0; attempts < 10000; attempts++)
+        {
+            var pointResult = GetNextSpiralPoint();
+            if (!pointResult.IsSuccess)
+                return Result.Fail<Rectangle>($"Failed to generate spiral points: {pointResult.Error}");
             
-            var candidateRectangle = CreateRectangleAtPoint(rectangleSize, point);
+            var candidateRectangle = CreateRectangleAtPoint(rectangleSize, pointResult.Value);
 
             if (IntersectsWithAny(candidateRectangle)) 
                 continue;
-            candidateRectangle = CompactRectangleTowardsCenter(candidateRectangle);
-            _placedRectangles.Add(candidateRectangle);
-            return candidateRectangle;
+            
+            var compactedRectangle = CompactRectangleTowardsCenter(candidateRectangle);
+            _placedRectangles.Add(compactedRectangle);
+            return Result.Ok(compactedRectangle);
         }
+        
+        return Result.Fail<Rectangle>("Too many attempts to place rectangle. Try different settings.");
     }
 
-    private void UpdateMinDimension(Size size)
+    private Result<Point> GetNextSpiralPoint()
     {
-        var newMinDimension = Math.Min(size.Width, size.Height);
-        if (newMinDimension >= _minDimension) 
-            return;
+        _spiralEnumerator ??= _pointsProvider.GetSpiralPoints(_minDimension).GetEnumerator();
         
-        _minDimension = newMinDimension;
-        _spiralEnumerator = _pointsProvider.GetSpiralPoints(_minDimension).GetEnumerator();
+        return _spiralEnumerator.MoveNext()
+            ? Result.Ok(_spiralEnumerator.Current)
+            : Result.Fail<Point>("Failed to generate more spiral points");
     }
 
     private Rectangle CreateRectangleAtPoint(Size size, Point point)
@@ -78,17 +98,8 @@ public class CircularCloudLayouter : ICloudLayouter
                 compacted = moved;
             else
             {
-                var movedX = new Rectangle(
-                    compacted.X + Math.Sign(direction.X) * stepSize,
-                    compacted.Y,
-                    compacted.Width,
-                    compacted.Height);
-                    
-                var movedY = new Rectangle(
-                    compacted.X,
-                    compacted.Y + Math.Sign(direction.Y) * stepSize,
-                    compacted.Width,
-                    compacted.Height);
+                var movedX = MoveRectangleX(compacted, direction, stepSize);
+                var movedY = MoveRectangleY(compacted, direction, stepSize);
                 
                 if (!IntersectsWithAny(movedX))
                     compacted = movedX;
@@ -135,13 +146,26 @@ public class CircularCloudLayouter : ICloudLayouter
             rectangle.Height);
     }
 
+    private Rectangle MoveRectangleX(Rectangle rectangle, Point direction, int stepSize)
+    {
+        return new Rectangle(
+            rectangle.X + Math.Sign(direction.X) * stepSize,
+            rectangle.Y,
+            rectangle.Width,
+            rectangle.Height);
+    }
+
+    private Rectangle MoveRectangleY(Rectangle rectangle, Point direction, int stepSize)
+    {
+        return new Rectangle(
+            rectangle.X,
+            rectangle.Y + Math.Sign(direction.Y) * stepSize,
+            rectangle.Width,
+            rectangle.Height);
+    }
+
     private bool IntersectsWithAny(Rectangle rectangle)
     {
-        foreach (var placed in _placedRectangles)
-        {
-            if (rectangle.IntersectsWith(placed))
-                return true;
-        }
-        return false;
+        return _placedRectangles.Any(placed => rectangle.IntersectsWith(placed));
     }
 }

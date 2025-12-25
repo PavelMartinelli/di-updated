@@ -19,4 +19,21 @@ public class AppSettings
     
     public List<string> StopWords { get; set; } = new();
     public bool ToLowerCase { get; set; } = true;
+    
+    public Result<None> Validate()
+    {
+        if (string.IsNullOrWhiteSpace(InputFile))
+            return Result.Fail<None>("Input file is required");
+        
+        if (MinFontSize <= 0 || MaxFontSize <= 0)
+            return Result.Fail<None>("Font sizes must be positive");
+        
+        if (MinFontSize > MaxFontSize)
+            return Result.Fail<None>("Minimum font size must be less than or equal to maximum font size");
+        
+        if (Width <= 0 || Height <= 0)
+            return Result.Fail<None>("Image dimensions must be positive");
+        
+        return Result.Ok();
+    }
 }

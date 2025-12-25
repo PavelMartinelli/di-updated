@@ -2,7 +2,7 @@
 
 public interface ITagProvider
 {
-    IEnumerable<WordTag> GetTags(
+    Result<IEnumerable<WordTag>> GetTags(
         TagCloudProviderConfig config,
         IFontSizeCalculator fontSizeCalculator,
         IColorScheme colorProvider);

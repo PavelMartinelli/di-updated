@@ -1,7 +1,7 @@
-﻿namespace TagCloudGenerator;
-
-using System.Drawing;
+﻿using System.Drawing;
 using System.Drawing.Imaging;
+
+namespace TagCloudGenerator;
 
 public class ImageSaver : IImageSaver
 {
@@ -12,30 +12,31 @@ public class ImageSaver : IImageSaver
         _relativeOutputDirectory = relativeOutputDirectory;
     }
 
-    public string SaveBitmap(Bitmap bitmap, string fileName, ImageFormat format = null)
+    public Result<string> SaveBitmap(Bitmap bitmap, string fileName, ImageFormat format = null)
     {
-        ArgumentNullException.ThrowIfNull(bitmap);
-
-        if (string.IsNullOrWhiteSpace(fileName))
-            throw new ArgumentException("File name cannot be empty", nameof(fileName));
-        
-        var actualFormat = format ?? GetFormatFromFileName(fileName);
-        
-        var projectDir = GetProjectDirectory();
-        var outputDir = Path.Combine(projectDir, _relativeOutputDirectory);
-        Directory.CreateDirectory(outputDir);
-        
-        var filePath = Path.Combine(outputDir, fileName);
-        bitmap.Save(filePath, actualFormat);
-        
-        return Path.GetFullPath(filePath);
+        return ValidateParameters(bitmap, fileName)
+            .Then(_ => GetImageFormat(fileName))
+            .Then(imageFormat => CreateOutputDirectory()
+                .Then(_ => SaveImageToFile(bitmap, fileName, imageFormat)))
+            .ReplaceError(err => $"Failed to save image '{fileName}': {err}");
     }
 
-    private ImageFormat GetFormatFromFileName(string fileName)
+    private Result<None> ValidateParameters(Bitmap bitmap, string fileName)
+    {
+        if (bitmap == null)
+            return Result.Fail<None>("Bitmap cannot be null");
+        
+        if (string.IsNullOrWhiteSpace(fileName))
+            return Result.Fail<None>("File name cannot be empty");
+        
+        return Result.Ok();
+    }
+
+    private Result<ImageFormat> GetImageFormat(string fileName)
     {
         var extension = Path.GetExtension(fileName).ToLowerInvariant();
         
-        return extension switch
+        var format = extension switch
         {
             ".png" => ImageFormat.Png,
             ".jpg" or ".jpeg" => ImageFormat.Jpeg,
@@ -44,6 +45,33 @@ public class ImageSaver : IImageSaver
             ".tiff" => ImageFormat.Tiff,
             _ => ImageFormat.Png
         };
+        
+        return format.AsResult();
+    }
+    
+    private Result<None> CreateOutputDirectory()
+    {
+        return Result.OfAction(() =>
+        {
+            var projectDir = GetProjectDirectory();
+            var outputDir = Path.Combine(projectDir, _relativeOutputDirectory);
+            Directory.CreateDirectory(outputDir);
+        }).ReplaceError(err => $"Failed to create output directory: {err}");
+    }
+
+    private Result<string> SaveImageToFile(Bitmap bitmap, string fileName, ImageFormat format)
+    {
+        return Result.Of(() =>
+        {
+            var projectDir = GetProjectDirectory();
+            var outputDir = Path.Combine(projectDir, _relativeOutputDirectory);
+            Directory.CreateDirectory(outputDir);
+            
+            var filePath = Path.Combine(outputDir, fileName);
+            bitmap.Save(filePath, format);
+            
+            return Path.GetFullPath(filePath);
+        });
     }
 
     private string GetProjectDirectory()
