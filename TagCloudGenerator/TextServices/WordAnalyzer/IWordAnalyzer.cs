@@ -2,5 +2,5 @@
 
 public interface IWordAnalyzer
 {
-    Dictionary<string, int> Analyze(IEnumerable<string> words);
+    Result<Dictionary<string, int>> Analyze(IEnumerable<string> words);
 }

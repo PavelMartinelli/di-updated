@@ -52,12 +52,15 @@ public class CircularCloudLayouterTests
             
             var config = new TagCloudVisualizationConfig(fileName);
             
-            var filePath = _testVisualizer.SaveVisualization(
+            var saveResult = _testVisualizer.SaveVisualization(
                 wordTags, 
                 _center, 
                 config
             );
             
+            if (!saveResult.IsSuccess) 
+                return;
+            var filePath = saveResult.GetValueOrThrow();
             TestContext.Out.WriteLine($"Tag cloud visualization saved to file {filePath}");
         }
         catch (Exception ex)
@@ -71,7 +74,9 @@ public class CircularCloudLayouterTests
     {
         var size = new Size(10, 10);
         
-        var actual = _layouter.PutNextRectangle(size);
+        var result = _layouter.PutNextRectangle(size);
+        result.IsSuccess.Should().BeTrue();
+        var actual = result.GetValueOrThrow();
         _placedRectangles.Add(actual);
         
         var expected = new Rectangle(
@@ -85,7 +90,9 @@ public class CircularCloudLayouterTests
     {
         for (var i = 0; i < 5; i++)
         {
-            var rectangle = _layouter.PutNextRectangle(new Size(45, 15));
+            var result = _layouter.PutNextRectangle(new Size(45, 15));
+            result.IsSuccess.Should().BeTrue();
+            var rectangle = result.GetValueOrThrow();
             _placedRectangles.Add(rectangle);
         }
         
@@ -112,7 +119,9 @@ public class CircularCloudLayouterTests
         for (var i = 0; i < 200; i++)
         {
             var size = sizes[random.Next(sizes.Length)];
-            var rectangle = _layouter.PutNextRectangle(size);
+            var result = _layouter.PutNextRectangle(size);
+            result.IsSuccess.Should().BeTrue();
+            var rectangle = result.GetValueOrThrow();
             _placedRectangles.Add(rectangle);
         }
     
@@ -134,7 +143,9 @@ public class CircularCloudLayouterTests
     {
         for (var i = 0; i < 150; i++)
         {
-            var rectangle = _layouter.PutNextRectangle(new Size(45, 15));
+            var result = _layouter.PutNextRectangle(new Size(45, 15));
+            result.IsSuccess.Should().BeTrue();
+            var rectangle = result.GetValueOrThrow();
             _placedRectangles.Add(rectangle);
         }
 
@@ -164,7 +175,9 @@ public class CircularCloudLayouterTests
     {
         for (var i = 0; i < 150; i++)
         {
-            var rectangle = _layouter.PutNextRectangle(new Size(45, 15));
+            var result = _layouter.PutNextRectangle(new Size(45, 15));
+            result.IsSuccess.Should().BeTrue();
+            var rectangle = result.GetValueOrThrow();
             _placedRectangles.Add(rectangle);
         }
         

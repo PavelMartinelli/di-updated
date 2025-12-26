@@ -6,80 +6,72 @@ namespace TagCloudGenerator;
 
 public class WordPreprocessor : IWordPreprocessor
 {
+    private static readonly Regex WordRegex = new Regex(@"\p{L}+", RegexOptions.Compiled);
+    
     private readonly HashSet<string> _customStopWords;
     private readonly bool _toLower;
-    private readonly NestorMorph _nMorph;
-    
+    private readonly Lazy<Result<NestorMorph>> _nMorph;
+
     private readonly HashSet<Pos> _functionalPartsOfSpeech =
     [
-        Pos.Preposition, // предлог
-        Pos.Conjunction, // союз
-        Pos.Particle, // частица
-        Pos.Interjection, // междометие
-        Pos.Parenthesis, // вводное слово
-        Pos.Pronoun // местоимения 
+        Pos.Preposition,
+        Pos.Conjunction,
+        Pos.Particle,
+        Pos.Interjection,
+        Pos.Parenthesis,
+        Pos.Pronoun
     ];
 
-    public WordPreprocessor(IEnumerable<string> customStopWords,
-        bool toLower = true)
+    public WordPreprocessor(IEnumerable<string> customStopWords, bool toLower = true)
     {
         _customStopWords = new HashSet<string>(
             customStopWords ?? [],
             StringComparer.OrdinalIgnoreCase);
 
         _toLower = toLower;
-
-        _nMorph = InitializeNestorSilently();
+        _nMorph = new Lazy<Result<NestorMorph>>(() => InitializeNestor());
     }
-    
-    private NestorMorph InitializeNestorSilently()
+
+    private Result<NestorMorph> InitializeNestor()
     {
-        var originalOut = Console.Out;
-        var originalError = Console.Error;
-    
-        try
+        return Result.Of(() =>
         {
             Console.SetOut(TextWriter.Null);
             Console.SetError(TextWriter.Null);
-        
-            return new NestorMorph();
-        }
-        finally
-        {
-            Console.SetOut(originalOut);
-            Console.SetError(originalError);
-        }
+            
+            var morph = new NestorMorph();
+            
+            Console.SetOut(new StreamWriter(Console.OpenStandardOutput()) { AutoFlush = true });
+            Console.SetError(new StreamWriter(Console.OpenStandardError()) { AutoFlush = true });
+            
+            return morph;
+        }).ReplaceError(err => 
+            "Failed to initialize morphological analyzer. " +
+            "Make sure Nestor library is properly installed. " +
+            $"Error: {err}");
     }
 
-    public IEnumerable<string> Process(IEnumerable<string> lines)
+    public Result<IEnumerable<string>> Process(IEnumerable<string> words)
     {
-        var allWords = ExtractWords(lines);
-
-        return !allWords.Any() 
-            ? [] 
-            : ProcessWords(allWords);
+        return words.AsResult()
+            .Then(ws => ExtractWords(ws))
+            .Then(allWords => allWords.ToList().AsResult())
+            .Then(allWords => ProcessWords(allWords))
+            .ReplaceError(err => $"Error during word preprocessing: {err}");
     }
 
-    private List<string> ExtractWords(IEnumerable<string> lines)
+    private Result<List<string>> ExtractWords(IEnumerable<string> lines)
     {
-        var wordRegex = new Regex(@"\p{L}+", RegexOptions.Compiled);
-        var allWords = new List<string>();
-
-        foreach (var line in lines)
-        {
-            if (string.IsNullOrWhiteSpace(line))
-                continue;
-
-            var matches = wordRegex.Matches(line);
-            foreach (Match match in matches)
+        return lines.AsResult()
+            .Then(ls => ls.Where(line => !string.IsNullOrWhiteSpace(line)).AsResult())
+            .Then(nonEmptyLines => Result.Of(() =>
             {
-                var word = NormalizeWord(match.Value);
-                if (!string.IsNullOrWhiteSpace(word))
-                    allWords.Add(word);
-            }
-        }
-
-        return allWords;
+                return nonEmptyLines
+                    .SelectMany(line => WordRegex.Matches(line).Cast<Match>())
+                    .Select(match => NormalizeWord(match.Value))
+                    .Where(word => !string.IsNullOrWhiteSpace(word))
+                    .ToList();
+            }));
     }
 
     private string NormalizeWord(string rawWord)
@@ -90,98 +82,77 @@ public class WordPreprocessor : IWordPreprocessor
         return _toLower ? rawWord.ToLowerInvariant() : rawWord;
     }
 
-    private IEnumerable<string> ProcessWords(
-        List<string> words)
+    private Result<IEnumerable<string>> ProcessWords(List<string> allWords)
     {
-        var processedWords = new List<string>();
-
-        foreach (var word in words)
-        {
-            var processedWord = ProcessWord(word);
-            if (!string.IsNullOrWhiteSpace(processedWord))
-                processedWords.Add(processedWord);
-        }
-
-        return processedWords;
+        return allWords.AsResult()
+            .Then(words => words
+                .Where(word => !_customStopWords.Contains(word))
+                .Select(word => ProcessWord(word))
+                .ToList()
+                .AsResult())
+            .Then(processedWordResults => processedWordResults
+                .Where(result => result.IsSuccess && !string.IsNullOrWhiteSpace(result.Value))
+                .Select(result => result.Value)
+                .ToList()
+                .AsEnumerable()
+                .AsResult());
     }
 
-    private string ProcessWord(string word)
+    private Result<string> ProcessWord(string word)
     {
-        if (_customStopWords.Contains(word))
-            return string.Empty;
-        
-        return _customStopWords.Any() 
-            ? ProcessWordWithCustomStopWords(word) 
+        return _customStopWords.Any()
+            ? ProcessWordWithCustomStopWords(word)
             : ProcessWordWithMorphology(word);
     }
 
-    private string ProcessWordWithCustomStopWords(string word)
+    private Result<string> ProcessWordWithCustomStopWords(string word)
     {
-        var lemma = TryGetLemma(word);
-        return !string.IsNullOrWhiteSpace(lemma) ? lemma : word;
+        return _nMorph.Value
+            .Then(nMorph => TryGetLemmaWithNestor(nMorph, word))
+            .Then(lemma => string.IsNullOrWhiteSpace(lemma) 
+                ? Result.Ok(word) 
+                : Result.Ok(_toLower ? lemma.ToLowerInvariant() : lemma))
+            .OnFail(_ => Result.Ok(word));
     }
 
-    private string ProcessWordWithMorphology(string word)
+    private Result<string> TryGetLemmaWithNestor(NestorMorph nMorph, string word)
     {
-        var wordInfos = GetWordInfo(word);
+        return Result.Of(() =>
+        {
+            var wordInfos = nMorph.WordInfo(word);
+            if (!wordInfos.Any())
+                return null;
 
-        if (!wordInfos.Any() || IsFunctionalWord(wordInfos))
-            return string.Empty;
-
-        return GetLemma(wordInfos, word);
+            var lemma = wordInfos[0].Lemma?.Word;
+            return string.IsNullOrWhiteSpace(lemma) ? null : lemma;
+        }).OnFail(_ => Result.Ok(word));
     }
 
-    private Word[] GetWordInfo(string word)
+    private Result<string> ProcessWordWithMorphology(string word)
     {
-        try
-        {
-            return _nMorph.WordInfo(word);
-        }
-        catch
-        {
-            return [];
-        }
-    }
-
-    private string TryGetLemma(string word)
-    {
-        try
-        {
-            var wordInfos = _nMorph.WordInfo(word);
-            if (wordInfos.Any())
-                return GetLemma(wordInfos, word);
-        }
-        catch
-        {
-            // Игнорируем ошибки при получении леммы
-        }
-
-        return null;
+        return _nMorph.Value
+            .Then(nMorph => Result.Of(() => nMorph.WordInfo(word)))
+            .Then(wordInfos => wordInfos.Any()
+                ? Result.Ok(wordInfos)
+                : Result.Fail<Word[]>("No word info"))
+            .Then(wordInfos => IsFunctionalWord(wordInfos)
+                ? Result.Ok(string.Empty)
+                : GetWordLemma(wordInfos, word))
+            .ReplaceError(_ => string.Empty);
     }
 
     private bool IsFunctionalWord(Word[] wordInfos)
     {
-        if (!wordInfos.Any())
-            return false;
-
-        var word = wordInfos[0];
-
-        var pos = word.Tag.Pos;
-
-        return _functionalPartsOfSpeech.Contains(pos);
+        return wordInfos.Any() && _functionalPartsOfSpeech.Contains(wordInfos[0].Tag.Pos);
     }
 
-    private string GetLemma(Word[] wordInfos, string originalWord)
+    private Result<string> GetWordLemma(Word[] wordInfos, string originalWord)
     {
-        if (!wordInfos.Any())
-            return _toLower ? originalWord.ToLowerInvariant() : originalWord;
-        var word = wordInfos[0];
-
-        var lemma = word.Lemma?.Word;
-
-        if (string.IsNullOrWhiteSpace(lemma))
-            return _toLower ? originalWord.ToLowerInvariant() : originalWord;
-
-        return _toLower ? lemma.ToLowerInvariant() : lemma;
+        return wordInfos.Any()
+            ? wordInfos[0].Lemma.Word.AsResult()
+                .Then(lemma => string.IsNullOrWhiteSpace(lemma)
+                    ? originalWord.AsResult()
+                    : (_toLower ? lemma.ToLowerInvariant() : lemma).AsResult())
+            : originalWord.AsResult();
     }
 }

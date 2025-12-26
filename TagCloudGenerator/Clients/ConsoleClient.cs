@@ -21,74 +21,100 @@ public class ConsoleClient
             .MapResult(
                 (GenerateOptions opts) => RunGenerate(opts, container),
                 (HelpOptions opts) => DisplayHelp(),
-                errs => 1);
+                errs => 
+                {
+                    Console.WriteLine("\n Invalid command line arguments");
+                    DisplayHelp();
+                    return 1;
+                });
     }
     
     private static int RunGenerate(GenerateOptions opts, IContainer container)
     {
-        try
-        {
-            var stopWords = new List<string>();
-            if (!string.IsNullOrEmpty(opts.StopWordsFile) && File.Exists(opts.StopWordsFile))
-            {
-                stopWords = File.ReadAllLines(opts.StopWordsFile)
-                    .Where(line => !string.IsNullOrWhiteSpace(line))
-                    .ToList();
-            }
-
-            var backgroundColor = ColorParser.TryParseColor(opts.BackgroundColor, out var parsedColor) 
-                ? parsedColor.Value 
-                : AppSettings.DefaultBackgroundColor;
-            
-            var settings = new AppSettings
-            {
-                InputFile = opts.InputFile,
-                OutputFile = opts.OutputFile,
-                Width = opts.Width,
-                Height = opts.Height,
-                FontFamily = opts.FontFamily,
-                MinFontSize = opts.MinFontSize,
-                MaxFontSize = opts.MaxFontSize,
-                BackgroundColor = backgroundColor,
-                ColorScheme = opts.ColorScheme,
-                Algorithm = opts.Algorithm,
-                Center = new Point(opts.CenterX, opts.CenterY),
-                StopWords = stopWords,
-                ToLowerCase = !opts.NoLowerCase
-            };
-            
-            Console.WriteLine("Tag Cloud Generator");
-            Console.WriteLine("===================");
-            Console.WriteLine($"Input file: {settings.InputFile}");
-            Console.WriteLine($"Output file: {settings.OutputFile}");
-            Console.WriteLine($"Image size: {settings.Width}x{settings.Height}");
-            Console.WriteLine($"Font: {settings.FontFamily} ({settings.MinFontSize}-{settings.MaxFontSize}pt)");
-            Console.WriteLine($"Color scheme: {settings.ColorScheme}");
-            Console.WriteLine($"To lowercase: {settings.ToLowerCase}");
-            Console.WriteLine($"Stop words: {settings.StopWords.Count} loaded");
-            
-            using var scope = container.BeginLifetimeScope(b =>
-            {
-                b.RegisterInstance(settings).As<AppSettings>().ExternallyOwned();
-            });
-            
-            var tagCloudApp = scope.Resolve<TagCloudApplication>();
-            
-            Console.WriteLine("\nGenerating tag cloud...");
-            var result = tagCloudApp.GenerateFromFile(settings);
-            
-            Console.WriteLine($"\n✅ Success! Tag cloud saved to:");
-            Console.WriteLine($"   {result}");
-            
-            return 0;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"\n❌ Error: {ex.Message}");
-            if (ex.InnerException != null)
-                Console.WriteLine($"   Inner exception: {ex.InnerException.Message}");
+        Console.WriteLine("Tag Cloud Generator");
+        Console.WriteLine("===================");
+        
+        var settingsResult = CreateSettings(opts)
+            .OnFail(error => Console.WriteLine($"\n Error: {error}"));
+        
+        if (!settingsResult.IsSuccess)
             return 1;
-        }
+        
+        var settings = settingsResult.Value;
+        
+        Console.WriteLine($"Input file: {settings.InputFile}");
+        Console.WriteLine($"Output file: {settings.OutputFile}");
+        Console.WriteLine($"Image size: {settings.Width}x{settings.Height}");
+        Console.WriteLine($"Font: {settings.FontFamily} ({settings.MinFontSize}-{settings.MaxFontSize}pt)");
+        Console.WriteLine($"Color scheme: {settings.ColorScheme}");
+        Console.WriteLine($"To lowercase: {settings.ToLowerCase}");
+        Console.WriteLine($"Stop words: {settings.StopWords.Count} loaded");
+        
+        using var scope = container.BeginLifetimeScope(b =>
+        {
+            b.RegisterInstance(settings).As<AppSettings>().ExternallyOwned();
+        });
+        
+        var tagCloudApp = scope.Resolve<TagCloudApplication>();
+        
+        Console.WriteLine("\nGenerating tag cloud...");
+        var result = tagCloudApp.GenerateFromFile(settings)
+            .Then(path =>
+            {
+                Console.WriteLine($"\n Success! Tag cloud saved to:");
+                Console.WriteLine($"   {path}");
+            })
+            .OnFail(error =>
+            {
+                Console.WriteLine($"\n Error: {error}");
+            });
+        
+        return result.IsSuccess ? 0 : 1;
+    }
+    
+    private static Result<AppSettings> CreateSettings(GenerateOptions opts)
+    {
+        return LoadStopWords(opts.StopWordsFile)
+            .Then(stopWords => ParseBackgroundColor(opts.BackgroundColor)
+                .Then(backgroundColor => new AppSettings
+                {
+                    InputFile = opts.InputFile,
+                    OutputFile = opts.OutputFile,
+                    Width = opts.Width,
+                    Height = opts.Height,
+                    FontFamily = opts.FontFamily,
+                    MinFontSize = opts.MinFontSize,
+                    MaxFontSize = opts.MaxFontSize,
+                    BackgroundColor = backgroundColor,
+                    ColorScheme = opts.ColorScheme,
+                    Algorithm = opts.Algorithm,
+                    Center = new Point(opts.CenterX, opts.CenterY),
+                    StopWords = stopWords,
+                    ToLowerCase = !opts.NoLowerCase
+                }.AsResult()));
+    }
+    
+    private static Result<List<string>> LoadStopWords(string stopWordsFile)
+    {
+        if (string.IsNullOrEmpty(stopWordsFile))
+            return new List<string>().AsResult();
+        
+        return Result.Of(() =>
+        {
+            if (!File.Exists(stopWordsFile))
+                throw new FileNotFoundException($"Stop words file not found: {stopWordsFile}");
+            
+            return File.ReadAllLines(stopWordsFile)
+                .Where(line => !string.IsNullOrWhiteSpace(line))
+                .Select(line => line.Trim())
+                .ToList();
+        }).ReplaceError(err => $"Cannot load stop words from '{stopWordsFile}': {err}"); 
+    }
+    
+    private static Result<Color> ParseBackgroundColor(string colorString)
+    {
+        return ColorParser.ParseColor(colorString)
+            .Then(color => color ?? AppSettings.DefaultBackgroundColor);
     }
     
     private static int DisplayHelp()

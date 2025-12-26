@@ -13,9 +13,11 @@ public class WordPreprocessorTests
         var preprocessor = new WordPreprocessor(stopWords, toLower: true);
         var words = new[] { "И", "Кот", "в", "доме", "НА", "полу", "бежит" };
         
-        var result = preprocessor.Process(words).ToList();
+        var result = preprocessor.Process(words);
+        result.IsSuccess.Should().BeTrue();
+        var processedWords = result.GetValueOrThrow().ToList();
         
-        result.Should().Equal("кот", "дом", "пол");
+        processedWords.Should().Equal("кот", "дом", "пол");
     }
 
     [Test]
@@ -24,9 +26,11 @@ public class WordPreprocessorTests
         var preprocessor = new WordPreprocessor(new List<string>(), toLower: true);
         var words = new[] { "привет", "мир", "тест" };
         
-        var result = preprocessor.Process(words).ToList();
+        var result = preprocessor.Process(words);
+        result.IsSuccess.Should().BeTrue();
+        var processedWords = result.GetValueOrThrow().ToList();
         
-        result.Should().Equal("привет", "мир", "тест");
+        processedWords.Should().Equal("привет", "мир", "тест");
     }
     
     [Test]
@@ -35,23 +39,27 @@ public class WordPreprocessorTests
         var preprocessor = new WordPreprocessor(new List<string>(), toLower: true);
         var words = new[] { "в", "лесу", "родилась", "и", "выросла", "ёлочка" };
         
-        var result = preprocessor.Process(words).ToList();
+        var result = preprocessor.Process(words);
+        result.IsSuccess.Should().BeTrue();
+        var processedWords = result.GetValueOrThrow().ToList();
 
-        result.Should().NotContain("в");
-        result.Should().NotContain("и");
-        result.Should().HaveCount(4);
+        processedWords.Should().NotContain("в");
+        processedWords.Should().NotContain("и");
+        processedWords.Should().HaveCount(4);
     }
     
-     [Test]
+    [Test]
     public void Process_ShouldLemmatizeWords_ToNormalForm()
     {
         var preprocessor = new WordPreprocessor(new List<string>(), toLower: true);
         var words = new[] { "кошки", "кошкой", "кошкам", "кошке", "кошка" };
         
-        var result = preprocessor.Process(words).ToList();
+        var result = preprocessor.Process(words);
+        result.IsSuccess.Should().BeTrue();
+        var processedWords = result.GetValueOrThrow().ToList();
         
-        result.All(word => word == "кошка").Should().BeTrue();
-        result.Should().HaveCount(5);
+        processedWords.All(word => word == "кошка").Should().BeTrue();
+        processedWords.Should().HaveCount(5);
     }
 
     [Test]
@@ -60,9 +68,11 @@ public class WordPreprocessorTests
         var preprocessor = new WordPreprocessor(new List<string>(), toLower: true);
         var words = new[] { "и", "в", "под", "а", "чтобы", "ой" };
         
-        var result = preprocessor.Process(words).ToList();
+        var result = preprocessor.Process(words);
+        result.IsSuccess.Should().BeTrue();
+        var processedWords = result.GetValueOrThrow().ToList();
         
-        result.Should().BeEmpty();
+        processedWords.Should().BeEmpty();
     }
 
     [Test]
@@ -72,10 +82,12 @@ public class WordPreprocessorTests
         
         var words = new[] { "СТОЛ", "Стол", "стол" };
         
-        var result = preprocessor.Process(words).ToList();
+        var result = preprocessor.Process(words);
+        result.IsSuccess.Should().BeTrue();
+        var processedWords = result.GetValueOrThrow().ToList();
         
-        result.All(word => word == "стол").Should().BeTrue();
-        result.Should().HaveCount(3);
+        processedWords.All(word => word == "стол").Should().BeTrue();
+        processedWords.Should().HaveCount(3);
     }
     
     [Test]
@@ -86,13 +98,15 @@ public class WordPreprocessorTests
         
         var words = new[] { "кошка", "и", "собака", "в", "доме" };
         
-        var result = preprocessor.Process(words).ToList();
+        var result = preprocessor.Process(words);
+        result.IsSuccess.Should().BeTrue();
+        var processedWords = result.GetValueOrThrow().ToList();
         
-        result.Should().Contain("и");
-        result.Should().Contain("в");
-        result.Should().Contain("дом");
-        result.Should().NotContain("кошка");
-        result.Should().NotContain("собака");
-        result.Should().HaveCount(3);
+        processedWords.Should().Contain("и");
+        processedWords.Should().Contain("в");
+        processedWords.Should().Contain("дом");
+        processedWords.Should().NotContain("кошка");
+        processedWords.Should().NotContain("собака");
+        processedWords.Should().HaveCount(3);
     }
 }

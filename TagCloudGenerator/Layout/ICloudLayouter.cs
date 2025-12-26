@@ -1,8 +1,8 @@
-﻿namespace TagCloudGenerator;
+﻿using System.Drawing;
 
-using System.Drawing;
+namespace TagCloudGenerator;
 
 public interface ICloudLayouter
 {
-    Rectangle PutNextRectangle(Size rectangleSize);
+    Result<Rectangle> PutNextRectangle(Size rectangleSize);
 }

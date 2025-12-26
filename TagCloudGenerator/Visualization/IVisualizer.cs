@@ -1,8 +1,8 @@
-﻿namespace TagCloudGenerator;
+﻿using System.Drawing;
 
-using System.Drawing;
+namespace TagCloudGenerator;
 
 public interface IVisualizer
 {
-    string SaveVisualization(IEnumerable<WordTag> tags, Point center, TagCloudVisualizationConfig config);
+    Result<string> SaveVisualization(IEnumerable<WordTag> tags, Point center, TagCloudVisualizationConfig config);
 }

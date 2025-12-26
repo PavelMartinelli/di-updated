@@ -1,10 +1,8 @@
 ﻿namespace TagCloudGenerator;
 
-using System.Drawing;
-
 public class SpiralTagCloudAlgorithm : ITagCloudArrangeAlgorithm
 {
-    public IEnumerable<WordTag> ArrangeTags(
+    public Result<IEnumerable<WordTag>> ArrangeTags(
         IEnumerable<WordTag> tags,
         ICloudLayouter layouter,
         ITextMeasurer textMeasurer)
@@ -14,11 +12,16 @@ public class SpiralTagCloudAlgorithm : ITagCloudArrangeAlgorithm
         foreach (var tag in tags.OrderByDescending(t => t.Frequency))
         {
             var size = textMeasurer.MeasureString(tag.Text, tag.Font);
-            var rectangle = layouter.PutNextRectangle(size);
-            tag.Rectangle = rectangle;
+            var rectangleResult = layouter.PutNextRectangle(size);
+            
+            if (!rectangleResult.IsSuccess)
+                return Result.Fail<IEnumerable<WordTag>>(
+                    $"Failed to arrange tag '{tag.Text}': {rectangleResult.Error}");
+            
+            tag.Rectangle = rectangleResult.Value;
             result.Add(tag);
         }
         
-        return result;
+        return result.AsEnumerable().AsResult();
     }
 }

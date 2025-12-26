@@ -5,5 +5,5 @@ namespace TagCloudGenerator;
 
 public interface IImageSaver
 {
-    string SaveBitmap(Bitmap bitmap, string fileName, ImageFormat format = null);
+    Result<string> SaveBitmap(Bitmap bitmap, string fileName, ImageFormat format = null);
 }
