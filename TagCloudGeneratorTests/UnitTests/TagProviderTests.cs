@@ -44,8 +44,9 @@ public class TagProviderTests
             20,
             60);
 
-        var tags = _tagProvider.GetTags(config, _mockFontSizeCalculator, _mockColorScheme)
-            .ToList();
+        var result = _tagProvider.GetTags(config, _mockFontSizeCalculator, _mockColorScheme);
+        result.IsSuccess.Should().BeTrue();
+        var tags = result.GetValueOrThrow().ToList();
 
         tags.Should().HaveCount(3);
         tags[0].Text.Should().Be("банан");
@@ -68,8 +69,9 @@ public class TagProviderTests
             20,
             60);
 
-        var tag = _tagProvider.GetTags(config, _mockFontSizeCalculator, _mockColorScheme)
-            .First();
+        var result = _tagProvider.GetTags(config, _mockFontSizeCalculator, _mockColorScheme);
+        result.IsSuccess.Should().BeTrue();
+        var tag = result.GetValueOrThrow().First();
 
         tag.Font.Size.Should().Be(30);
         tag.Font.FontFamily.Name.Should().Be("Arial");

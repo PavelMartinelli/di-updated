@@ -8,56 +8,66 @@ namespace TagCloudGeneratorTests;
 public class ColorParserTests
 {
     [Test]
-    public void TryParseColor_ShouldReturnFalse_ForNullOrEmptyString()
+    public void ParseColor_ShouldReturnSuccessWithNull_ForNullOrEmptyString()
     {
-        ColorParser.TryParseColor(null, out var color).Should().BeFalse();
-        color.Should().BeNull();
+        var result1 = ColorParser.ParseColor(null);
+        result1.IsSuccess.Should().BeTrue();
+        result1.GetValueOrThrow().Should().BeNull();
         
-        ColorParser.TryParseColor("", out color).Should().BeFalse();
-        color.Should().BeNull();
+        var result2 = ColorParser.ParseColor("");
+        result2.IsSuccess.Should().BeTrue();
+        result2.GetValueOrThrow().Should().BeNull();
     }
     
     [Test]
-    public void TryParseColor_ShouldReturnFalse_ForInvalidFormat()
+    public void ParseColor_ShouldReturnFailure_ForInvalidFormat()
     {
-        ColorParser.TryParseColor("invalid", out var color).Should().BeFalse();
-        color.Should().BeNull();
+        var result = ColorParser.ParseColor("invalid");
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("Invalid color format");
     }
 
     [Test]
-    public void TryParseColor_ShouldParseNamedColors()
+    public void ParseColor_ShouldParseNamedColors()
     {
-        ColorParser.TryParseColor("Red", out var color).Should().BeTrue();
-        color.Value.ToArgb().Should().Be(Color.Red.ToArgb());
+        var result1 = ColorParser.ParseColor("Red");
+        result1.IsSuccess.Should().BeTrue();
+        result1.GetValueOrThrow().Value.ToArgb().Should().Be(Color.Red.ToArgb());
         
-        ColorParser.TryParseColor("GREEN", out color).Should().BeTrue();
-        color.Value.ToArgb().Should().Be(Color.Green.ToArgb());
+        var result2 = ColorParser.ParseColor("GREEN");
+        result2.IsSuccess.Should().BeTrue();
+        result2.GetValueOrThrow().Value.ToArgb().Should().Be(Color.Green.ToArgb());
     }
 
     [Test]
-    public void TryParseColor_ShouldParseHexColors()
+    public void ParseColor_ShouldParseHexColors()
     {
-        ColorParser.TryParseColor("#FF0000", out var color).Should().BeTrue();
-        color.Value.ToArgb().Should().Be(Color.FromArgb(255, 255, 0, 0).ToArgb());
+        var result1 = ColorParser.ParseColor("#FF0000");
+        result1.IsSuccess.Should().BeTrue();
+        result1.GetValueOrThrow().Value.ToArgb().Should().Be(Color.FromArgb(255, 255, 0, 0).ToArgb());
         
-        ColorParser.TryParseColor("#00FF00", out color).Should().BeTrue();
-        color.Value.ToArgb().Should().Be(Color.FromArgb(255, 0, 255, 0).ToArgb());
+        var result2 = ColorParser.ParseColor("#00FF00");
+        result2.IsSuccess.Should().BeTrue();
+        result2.GetValueOrThrow().Value.ToArgb().Should().Be(Color.FromArgb(255, 0, 255, 0).ToArgb());
     }
 
     [Test]
-    public void TryParseColor_ShouldParseRgbColors()
+    public void ParseColor_ShouldParseRgbColors()
     {
-        ColorParser.TryParseColor("255,0,0", out var color).Should().BeTrue();
-        color.Value.ToArgb().Should().Be(Color.FromArgb(255, 255, 0, 0).ToArgb());
+        var result1 = ColorParser.ParseColor("255,0,0");
+        result1.IsSuccess.Should().BeTrue();
+        result1.GetValueOrThrow().Value.ToArgb().Should().Be(Color.FromArgb(255, 255, 0, 0).ToArgb());
         
-        ColorParser.TryParseColor("0,255,0", out color).Should().BeTrue();
-        color.Value.ToArgb().Should().Be(Color.FromArgb(255, 0, 255, 0).ToArgb());
+        var result2 = ColorParser.ParseColor("0,255,0");
+        result2.IsSuccess.Should().BeTrue();
+        result2.GetValueOrThrow().Value.ToArgb().Should().Be(Color.FromArgb(255, 0, 255, 0).ToArgb());
     }
 
     [Test]
-    public void TryParseColor_ShouldParseArgbColors()
+    public void ParseColor_ShouldParseArgbColors()
     {
-        ColorParser.TryParseColor("255,255,0,0", out var color).Should().BeTrue();
-        color.Value.ToArgb().Should().Be(Color.FromArgb(255, 255, 0, 0).ToArgb());
+        var result = ColorParser.ParseColor("255,255,0,0");
+        result.IsSuccess.Should().BeTrue();
+        result.GetValueOrThrow().Value.ToArgb().Should().Be(Color.FromArgb(255, 255, 0, 0).ToArgb());
     }
 }

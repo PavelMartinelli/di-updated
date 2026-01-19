@@ -1,6 +1,6 @@
-﻿namespace TagCloudGenerator;
+﻿using System.Drawing;
 
-using System.Drawing;
+namespace TagCloudGenerator;
 
 public class AppSettings
 {
@@ -19,4 +19,21 @@ public class AppSettings
     
     public List<string> StopWords { get; set; } = new();
     public bool ToLowerCase { get; set; } = true;
+    
+    public Result<AppSettings> Validate()
+    {
+        if (string.IsNullOrWhiteSpace(InputFile))
+            return Result.Fail<AppSettings>("Input file is required");
+        
+        if (MinFontSize <= 0 || MaxFontSize <= 0)
+            return Result.Fail<AppSettings>("Font sizes must be positive");
+        
+        if (MinFontSize > MaxFontSize)
+            return Result.Fail<AppSettings>("Minimum font size must be less than or equal to maximum font size");
+        
+        if (Width <= 0 || Height <= 0)
+            return Result.Fail<AppSettings>("Image dimensions must be positive");
+        
+        return Result.Ok(this);
+    }
 }

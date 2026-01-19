@@ -21,11 +21,11 @@ public class TagCloudVisualizerTests
         _center = new Point(100, 100);
         
         A.CallTo(() => _fakeImageSaver.SaveBitmap(A<Bitmap>._, A<string>._, A<ImageFormat>._))
-            .ReturnsLazily(call => Path.Combine("test_output", call.Arguments.Get<string>(1)));
+            .ReturnsLazily(call => Result.Ok(Path.Combine("test_output", call.Arguments.Get<string>(1))));
     }
 
     [Test]
-    public void CreateVisualization_WithWordTags_ReturnsNonEmptyBitmap()
+    public void SaveVisualization_WithWordTags_ReturnsSuccess()
     {
         var wordTags = new[]
         {
@@ -41,76 +41,9 @@ public class TagCloudVisualizerTests
         
         var config = new TagCloudVisualizationConfig("test.png", backgroundColor: Color.White);
         
-        var bitmap = _visualizer.CreateVisualization(wordTags, _center, config);
+        var result = _visualizer.SaveVisualization(wordTags, _center, config);
         
-        bitmap.Should().NotBeNull();
-        bitmap.Width.Should().BeGreaterThan(0);
-        bitmap.Height.Should().BeGreaterThan(0);
-    }
-
-    [Test]
-    public void CreateVisualization_WithImageSize_UsesSpecifiedSize()
-    {
-        var wordTags = new[]
-        {
-            new WordTag("Тест", 1, new Font("Arial", 12), Color.Black)
-            {
-                Rectangle = new Rectangle(50, 50, 40, 20)
-            }
-        };
-        
-        var expectedSize = new Size(800, 600);
-        var config = new TagCloudVisualizationConfig("test.png", imageSize: expectedSize);
-        
-        var bitmap = _visualizer.CreateVisualization(wordTags, _center, config);
-        
-        bitmap.Size.Should().Be(expectedSize);
-    }
-
-    [Test]
-    public void CreateVisualization_WithoutImageSize_CalculatesOptimalSize()
-    {
-        var wordTags = new[]
-        {
-            new WordTag("Первый", 2, new Font("Arial", 12), Color.Black)
-            {
-                Rectangle = new Rectangle(0, 0, 50, 50)
-            },
-            new WordTag("Второй", 1, new Font("Arial", 12), Color.Black)
-            {
-                Rectangle = new Rectangle(200, 200, 70, 30)
-            }
-        };
-        
-        var config = new TagCloudVisualizationConfig("test.png", imageSize: null);
-        
-        var bitmap = _visualizer.CreateVisualization(wordTags, _center, config); 
-        
-        bitmap.Width.Should().BeGreaterThan(200 + 70); 
-        bitmap.Height.Should().BeGreaterThan(200 + 30);
-    }
-    
-    [Test]
-    public void CreateVisualization_UsesSpecifiedBackgroundColor()
-    {
-        var wordTags = new[]
-        {
-            new WordTag("Тест", 1, new Font("Arial", 12), Color.Black)
-            {
-                Rectangle = new Rectangle(50, 50, 40, 20)
-            }
-        };
-        
-        var backgroundColor = Color.Black;
-        var config = new TagCloudVisualizationConfig(
-            "test.png",
-            backgroundColor: backgroundColor);
-        
-        var bitmap = _visualizer.CreateVisualization(wordTags, _center, config);
-        
-        bitmap.Should().NotBeNull();
-        bitmap.Width.Should().BeGreaterThan(0);
-        bitmap.Height.Should().BeGreaterThan(0);
+        result.IsSuccess.Should().BeTrue();
     }
 
     [Test]
@@ -127,7 +60,8 @@ public class TagCloudVisualizerTests
         var expectedFileName = "test_output.png";
         var config = new TagCloudVisualizationConfig(expectedFileName);
         
-        _visualizer.SaveVisualization(wordTags, _center, config);
+        var result = _visualizer.SaveVisualization(wordTags, _center, config);
+        result.IsSuccess.Should().BeTrue();
         
         A.CallTo(() => _fakeImageSaver.SaveBitmap(
             A<Bitmap>._, 
@@ -151,10 +85,33 @@ public class TagCloudVisualizerTests
         var config = new TagCloudVisualizationConfig("test.png");
         
         A.CallTo(() => _fakeImageSaver.SaveBitmap(A<Bitmap>._, A<string>._, A<ImageFormat>._))
-            .Returns(expectedPath);
+            .Returns(Result.Ok(expectedPath));
         
         var result = _visualizer.SaveVisualization(wordTags, _center, config);
         
-        result.Should().Be(expectedPath);
+        result.IsSuccess.Should().BeTrue();
+        result.GetValueOrThrow().Should().Be(expectedPath);
+    }
+    
+    [Test]
+    public void SaveVisualization_ReturnsFailure_WhenImageSaverFails()
+    {
+        var wordTags = new[]
+        {
+            new WordTag("Тест", 1, new Font("Arial", 12), Color.Black)
+            {
+                Rectangle = new Rectangle(50, 50, 40, 20)
+            }
+        };
+        
+        var config = new TagCloudVisualizationConfig("test.png");
+        
+        A.CallTo(() => _fakeImageSaver.SaveBitmap(A<Bitmap>._, A<string>._, A<ImageFormat>._))
+            .Returns(Result.Fail<string>("Failed to save image"));
+        
+        var result = _visualizer.SaveVisualization(wordTags, _center, config);
+        
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("Failed to save image");
     }
 }

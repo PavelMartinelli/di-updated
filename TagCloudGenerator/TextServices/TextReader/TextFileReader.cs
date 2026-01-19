@@ -2,15 +2,14 @@
 
 public class TextFileReader : ITextReader
 {
-    public bool CanRead(string filePath)
+    public Result<IEnumerable<string>> ReadLines(string filePath)
     {
-        return File.Exists(filePath);
-    }
+        return Result.Of(() =>
+        {
+            if (!File.Exists(filePath))
+                throw new FileNotFoundException($"File not found: {filePath}");
 
-    public IEnumerable<string> ReadLines(string filePath)
-    {
-        using var reader = new StreamReader(filePath);
-        while (reader.ReadLine() is { } line)
-            yield return line;
+            return File.ReadLines(filePath).AsEnumerable();
+        }).ReplaceError(err => $"Cannot read file '{filePath}': {err}");
     }
 }

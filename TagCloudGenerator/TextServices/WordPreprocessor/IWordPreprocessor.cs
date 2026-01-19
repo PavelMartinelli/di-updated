@@ -2,5 +2,5 @@
 
 public interface IWordPreprocessor
 {
-    IEnumerable<string> Process(IEnumerable<string> words);
+    Result<IEnumerable<string>> Process(IEnumerable<string> words);
 }

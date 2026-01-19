@@ -22,7 +22,6 @@ public class IntegrationTests
         _tempInputFile = Path.Combine(_tempOutputDir, "test_input.txt");
 
         _imageSaver = new ImageSaver(_tempOutputDir);
-
     }
 
     [TearDown]
@@ -68,7 +67,9 @@ public class IntegrationTests
         using var container = CreateContainer(settings);
         var app = container.Resolve<TagCloudApplication>();
         
-        var resultPath = app.GenerateFromFile(settings);
+        var result = app.GenerateFromFile(settings);
+        result.IsSuccess.Should().BeTrue();
+        var resultPath = result.GetValueOrThrow();
         
         resultPath.Should().NotBeNullOrEmpty();
         File.Exists(resultPath).Should().BeTrue();
@@ -95,7 +96,9 @@ public class IntegrationTests
         using var container = CreateContainer(settings);
         var app = container.Resolve<TagCloudApplication>();
         
-        var resultPath = app.GenerateFromFile(settings);
+        var result = app.GenerateFromFile(settings);
+        result.IsSuccess.Should().BeTrue();
+        var resultPath = result.GetValueOrThrow();
         
         resultPath.Should().NotBeNullOrEmpty();
         File.Exists(resultPath).Should().BeTrue();
@@ -105,7 +108,7 @@ public class IntegrationTests
     }
 
     [Test]
-    public void GenerateFromFile_ShouldThrow_WhenInputFileNotFound()
+    public void GenerateFromFile_ShouldReturnFailure_WhenInputFileNotFound()
     {
         var settings = new AppSettings
         {
@@ -116,11 +119,13 @@ public class IntegrationTests
         using var container = CreateContainer(settings);
         var app = container.Resolve<TagCloudApplication>();
         
-        Assert.Throws<FileNotFoundException>(() => app.GenerateFromFile(settings));
+        var result = app.GenerateFromFile(settings);
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("File not found");
     }
 
     [Test]
-    public void GenerateFromFile_ShouldHandleEmptyFile_Gracefully()
+    public void GenerateFromFile_ShouldReturnFailure_WhenNoWordsFound()
     {
         File.WriteAllText(_tempInputFile, string.Empty);
 
@@ -133,7 +138,9 @@ public class IntegrationTests
         using var container = CreateContainer(settings);
         var app = container.Resolve<TagCloudApplication>();
         
-        Assert.Throws<InvalidOperationException>(() => app.GenerateFromFile(settings));
+        var result = app.GenerateFromFile(settings);
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("No words found");
     }
 
     private IContainer CreateContainer(AppSettings settings)

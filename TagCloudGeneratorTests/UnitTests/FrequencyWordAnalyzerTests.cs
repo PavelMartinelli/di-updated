@@ -20,10 +20,12 @@ public class FrequencyWordAnalyzerTests
         var words = new[] { "кот", "собака", "Кот", "СОБАКА", "кот", "Собака" };
         
         var result = _analyzer.Analyze(words);
+        result.IsSuccess.Should().BeTrue();
+        var frequencies = result.GetValueOrThrow();
         
-        result.Should().HaveCount(2);
-        result["кот"].Should().Be(3);
-        result["собака"].Should().Be(3);
+        frequencies.Should().HaveCount(2);
+        frequencies["кот"].Should().Be(3);
+        frequencies["собака"].Should().Be(3);
     }
 
     [Test]
@@ -32,9 +34,11 @@ public class FrequencyWordAnalyzerTests
         var words = Enumerable.Empty<string>();
         
         var result = _analyzer.Analyze(words);
+        result.IsSuccess.Should().BeTrue();
+        var frequencies = result.GetValueOrThrow();
         
-        result.Should().BeEmpty();
-        result.Should().NotBeNull();
+        frequencies.Should().BeEmpty();
+        frequencies.Should().NotBeNull();
     }
 
     [Test]
@@ -43,8 +47,10 @@ public class FrequencyWordAnalyzerTests
         var words = new[] { "тест", "тест", "тест", "тест" };
         
         var result = _analyzer.Analyze(words);
+        result.IsSuccess.Should().BeTrue();
+        var frequencies = result.GetValueOrThrow();
         
-        result.Should().HaveCount(1);
-        result["тест"].Should().Be(4);
+        frequencies.Should().HaveCount(1);
+        frequencies["тест"].Should().Be(4);
     }
 }
