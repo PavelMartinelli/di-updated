@@ -55,13 +55,14 @@ public class TagCloudApplication
             .Then(arrangedTags => SaveVisualization(settings, arrangedTags));
     }
 
-    private Result<None> ValidateFont(string fontFamily)
+    private Result<string> ValidateFont(string fontFamily)
     {
-        return Result.OfAction(() =>
+        return Result.Of(() =>
             {
                 using var testFont = new Font(fontFamily, 12);
                 if (!testFont.Name.Equals(fontFamily, StringComparison.OrdinalIgnoreCase))
                     throw new Exception($"Font '{fontFamily}' is not available in the system.");
+                return fontFamily;
             }, $"Font '{fontFamily}' is not available in the system. Please check the font name and try again.");
     }
 

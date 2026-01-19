@@ -21,15 +21,14 @@ public class ImageSaver : IImageSaver
             .ReplaceError(err => $"Failed to save image '{fileName}': {err}");
     }
 
-    private Result<None> ValidateParameters(Bitmap bitmap, string fileName)
+    private Result<(Bitmap bitmap, string fileName)> ValidateParameters(Bitmap bitmap, string fileName)
     {
         if (bitmap == null)
-            return Result.Fail<None>("Bitmap cannot be null");
+            return Result.Fail<(Bitmap, string)>("Bitmap cannot be null");
         
-        if (string.IsNullOrWhiteSpace(fileName))
-            return Result.Fail<None>("File name cannot be empty");
-        
-        return Result.Ok();
+        return string.IsNullOrWhiteSpace(fileName) 
+            ? Result.Fail<(Bitmap, string)>("File name cannot be empty") 
+            : Result.Ok((bitmap, fileName));
     }
 
     private Result<ImageFormat> GetImageFormat(string fileName)
@@ -49,13 +48,14 @@ public class ImageSaver : IImageSaver
         return format.AsResult();
     }
     
-    private Result<None> CreateOutputDirectory()
+    private Result<string> CreateOutputDirectory()
     {
-        return Result.OfAction(() =>
+        return Result.Of(() =>
         {
             var projectDir = GetProjectDirectory();
             var outputDir = Path.Combine(projectDir, _relativeOutputDirectory);
             Directory.CreateDirectory(outputDir);
+            return outputDir;
         }).ReplaceError(err => $"Failed to create output directory: {err}");
     }
 

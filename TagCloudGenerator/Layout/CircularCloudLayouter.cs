@@ -27,14 +27,14 @@ public class CircularCloudLayouter : ICloudLayouter
             .ReplaceError(err => $"Failed to place rectangle of size {rectangleSize}: {err}");
     }
 
-    private Result<None> ValidateRectangleSize(Size rectangleSize)
+    private Result<Size> ValidateRectangleSize(Size rectangleSize)
     {
         return (rectangleSize.Width > 0 && rectangleSize.Height > 0)
-            ? Result.Ok()
-            : Result.Fail<None>("Rectangle size must have positive dimensions");
+            ? Result.Ok(rectangleSize)
+            : Result.Fail<Size>("Rectangle size must have positive dimensions");
     }
 
-    private Result<None> UpdateMinDimension(Size size)
+    private Result<Size> UpdateMinDimension(Size size)
     {
         var newMinDimension = Math.Min(size.Width, size.Height);
         if (newMinDimension < _minDimension)
@@ -42,7 +42,8 @@ public class CircularCloudLayouter : ICloudLayouter
             _minDimension = newMinDimension;
             _spiralEnumerator = _pointsProvider.GetSpiralPoints(_minDimension).GetEnumerator();
         }
-        return Result.Ok();
+        
+        return Result.Ok(size);
     }
 
     private Result<Rectangle> FindPlaceForRectangle(Size rectangleSize)
